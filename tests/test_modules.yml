@@ -1,0 +1,60 @@
+---
+- name: Test ha_automation and ha_entity modules
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+
+  vars:
+    ha: "{{ hostvars['homeassistant.iot.nerdygriffin.net'].homeassistant }}"
+
+  roles:
+    - role: nerdygriffin.homeassistant
+
+  tasks:
+    - name: List automations matching 'morning'
+      ha_automation:
+        homeassistant: "{{ ha }}"
+        action: list
+        search: "morning"
+      register: morning_automations
+
+    - name: Show morning automations
+      ansible.builtin.debug:
+        msg: "{{ morning_automations.automations }}"
+
+    - name: Get a specific automation config
+      ha_automation:
+        homeassistant: "{{ ha }}"
+        action: get
+        entity_id: automation.sunset_lights_on
+      register: sunset_config
+
+    - name: Show sunset automation config
+      ansible.builtin.debug:
+        msg: "{{ sunset_config.config }}"
+
+    - name: List garage sensor entities
+      ha_entity:
+        homeassistant: "{{ ha }}"
+        action: list
+        search: "^sensor\\.garage"
+      register: garage_sensors
+
+    - name: Show garage sensors
+      ansible.builtin.debug:
+        msg: "{{ garage_sensors.entities }}"
+
+    - name: Test check mode on automation update (no-op)
+      ha_automation:
+        homeassistant: "{{ ha }}"
+        action: update
+        entity_id: automation.sunset_lights_on
+        config:
+          mode: single
+      check_mode: true
+      register: check_result
+
+    - name: Show check mode result
+      ansible.builtin.debug:
+        msg: "changed={{ check_result.changed }}, changed_keys={{ check_result.changed_keys }}"

@@ -1,0 +1,20 @@
+---
+dependencies: []
+
+galaxy_info:
+  role_name: homeassistant
+  namespace: nerdygriffin
+  author: NerdyGriffin
+  description: Manage Home Assistant automations, entities, dashboards, and scripts via the HA WebSocket/REST API.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: GenericLinux
+      versions:
+        - all
+  galaxy_tags:
+    - homeassistant
+    - homeautomation
+    - iot
+    - api
+    - websocket

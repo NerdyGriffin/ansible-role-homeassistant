@@ -1,0 +1,28 @@
+---
+# Main entry point for the homeassistant role.
+#
+# This role provides ha_automation and ha_entity custom modules that
+# run on the controller and communicate with HA via WebSocket/REST API.
+#
+# Prerequisites (on the Ansible controller):
+#   pip install websocket-client requests
+#
+# Playbooks using this role should target localhost with become: false.
+#
+# After including this role, use the modules directly:
+#
+#   - ha_automation:
+#       homeassistant: "{{ homeassistant }}"
+#       action: list
+#
+#   - ha_entity:
+#       homeassistant: "{{ homeassistant }}"
+#       action: list
+#       search: "^sensor\\."
+
+- name: Verify HA API Python dependencies are available
+  ansible.builtin.command:
+    cmd: "{{ ansible_python_interpreter | default('python3') }} -c 'import websocket; import requests'"
+  changed_when: false
+  delegate_to: localhost
+  run_once: true
