@@ -17,7 +17,8 @@ rules:
     forbid-implicit-octal: true
     forbid-explicit-octal: true
 
-# Vendored subtree — see exclude_paths in .ansible-lint for why it is not
+# Vendored subtrees — see exclude_paths in .ansible-lint for why they are not
 # ours to lint or reformat.
 ignore: |
   .ansible-lint-rules/
+  files/entity-renamer/

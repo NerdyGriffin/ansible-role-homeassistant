@@ -11,6 +11,12 @@ exclude_paths:
   # here adds nothing, and `ansible-lint --fix` would rewrite them, which makes
   # the next `git subtree pull` conflict against edits we never meant to make.
   - .ansible-lint-rules/
+  # The entity-renamer CLI tools, vendored the same way from
+  # https://github.com/NerdyGriffin/homeassistant-entity-renamer. Same reasoning.
+  # It tracks no YAML today, so this excludes nothing yet — it is here so that
+  # the day it does, `ansible-lint --fix` cannot rewrite another repo's content.
+  #   git subtree pull --prefix files/entity-renamer entity-renamer main --squash
+  - files/entity-renamer/
 
 warn_list:
   - role-name[path]
