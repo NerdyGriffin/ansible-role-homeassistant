@@ -61,26 +61,26 @@ author:
 EXAMPLES = r'''
 - name: List all automations
   ha_automation:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: list
 
 - name: List automations matching a pattern
   ha_automation:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: list
-    search: "christian_s_.*lights"
+    search: "evening.*lights"
 
 - name: Get a specific automation config
   ha_automation:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: get
-    entity_id: automation.sunset_lights_on
+    entity_id: automation.example
 
 - name: Update an automation's triggers
   ha_automation:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: update
-    entity_id: automation.christian_s_18_00_lights
+    entity_id: automation.example
     config:
       triggers:
         - at: "18:00:00"

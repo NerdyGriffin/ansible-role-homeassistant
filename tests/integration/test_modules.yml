@@ -1,0 +1,111 @@
+---
+# Live tests for the ha_automation and ha_entity modules. These talk to a real
+# Home Assistant instance, so they are run by hand, not by CI:
+#
+#   ansible-playbook tests/integration/test_modules.yml \
+#     -e homeassistant_host=ha.example.com \
+#     -e homeassistant_access_token="$HA_TOKEN" \
+#     -e test_automation_entity_id=automation.some_automation
+#
+# Everything site-specific is a variable with a neutral default. The one value
+# with no sensible default is test_automation_entity_id, so the get and
+# check-mode tests skip themselves rather than fail when it is not supplied.
+
+- name: Test ha_automation and ha_entity modules
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+
+  vars:
+    test_automation_search: ""
+    test_entity_search: "^sensor\\."
+    test_automation_entity_id: ""
+
+  roles:
+    - role: nerdygriffin.homeassistant
+
+  tasks:
+    - name: List automations
+      ha_automation:
+        homeassistant: "{{ homeassistant_connection }}"
+        action: list
+        search: "{{ test_automation_search }}"
+      register: listed_automations
+
+    - name: Assert the automation listing came back well-formed
+      ansible.builtin.assert:
+        that:
+          - listed_automations.automations is defined
+          - listed_automations.automations is iterable
+          - listed_automations is not changed
+        fail_msg: "ha_automation action=list did not return an automations list"
+        quiet: true
+
+    - name: List entities
+      ha_entity:
+        homeassistant: "{{ homeassistant_connection }}"
+        action: list
+        search: "{{ test_entity_search }}"
+      register: listed_entities
+
+    - name: Assert every listed entity matches the search
+      ansible.builtin.assert:
+        that:
+          - listed_entities.entities is defined
+          - listed_entities.entities | length > 0
+          - listed_entities.entities
+            | map(attribute='entity_id')
+            | select('match', test_entity_search)
+            | list | length == listed_entities.entities | length
+        fail_msg: "ha_entity action=list ignored the search regex"
+        quiet: true
+
+    - name: Get one automation's config
+      ha_automation:
+        homeassistant: "{{ homeassistant_connection }}"
+        action: get
+        entity_id: "{{ test_automation_entity_id }}"
+      register: fetched_automation
+      when: test_automation_entity_id | length > 0
+
+    - name: Assert the fetched config looks like an automation
+      ansible.builtin.assert:
+        that:
+          - fetched_automation.config is defined
+          - fetched_automation.config | length > 0
+        fail_msg: "ha_automation action=get returned no config"
+        quiet: true
+      when: test_automation_entity_id | length > 0
+
+    - name: Update an automation in check mode
+      ha_automation:
+        homeassistant: "{{ homeassistant_connection }}"
+        action: update
+        entity_id: "{{ test_automation_entity_id }}"
+        config:
+          alias: "check-mode probe {{ 999999 | random }}"
+      check_mode: true
+      register: check_mode_update
+      when: test_automation_entity_id | length > 0
+
+    - name: Re-read the automation after the check-mode update
+      ha_automation:
+        homeassistant: "{{ homeassistant_connection }}"
+        action: get
+        entity_id: "{{ test_automation_entity_id }}"
+      register: reread_automation
+      when: test_automation_entity_id | length > 0
+
+    - name: Assert check mode reported a change and wrote nothing
+      # Both halves matter. Reporting no change would make --check useless;
+      # reporting a change it actually performed would make --check dangerous.
+      ansible.builtin.assert:
+        that:
+          - check_mode_update is changed
+          - reread_automation.config == fetched_automation.config
+        fail_msg: >-
+          Check mode {{ 'did not report a change' if check_mode_update is not changed
+          else 'modified the automation on the server' }}
+        quiet: true
+      when: test_automation_entity_id | length > 0

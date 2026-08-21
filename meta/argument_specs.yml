@@ -1,0 +1,89 @@
+---
+argument_specs:
+  main:
+    short_description: Validate the Home Assistant connection and controller environment
+    description:
+      - Checks that the connection settings are complete and that the Python
+        packages the ha_* modules need are importable on the controller.
+      - Include this before using the ha_automation or ha_entity modules.
+    options:
+      homeassistant_host:
+        description: Hostname or IP address of the Home Assistant instance.
+        type: str
+        required: true
+      homeassistant_port:
+        description: Port the Home Assistant HTTP and WebSocket APIs listen on.
+        type: int
+        default: 8123
+      homeassistant_tls:
+        description: Whether to reach Home Assistant over HTTPS and WSS.
+        type: bool
+        default: false
+      homeassistant_ssl_verify:
+        description: Whether to verify the TLS certificate.
+        type: bool
+        default: false
+      homeassistant_access_token:
+        description:
+          - A long-lived access token, from Profile > Security in the Home
+            Assistant UI. Keep it in a vault.
+        type: str
+        required: true
+      homeassistant_pip_packages:
+        description: Python packages the controller needs.
+        type: list
+        elements: str
+        default:
+          - websocket-client
+          - requests
+      homeassistant_manage_dependencies:
+        description:
+          - Whether the role may install those packages into the interpreter
+            Ansible is running under. Off by default; the role otherwise only
+            checks that they import.
+        type: bool
+        default: false
+      homeassistant_tools_state_dir:
+        description:
+          - Controller-side directory for the bundled entity-renamer tools'
+            virtualenv and rendered config.py. Must be outside the role, which
+            ansible-galaxy replaces wholesale on update.
+        type: str
+
+  reset_entity_names:
+    short_description: Reset entity IDs to the ones Home Assistant would generate
+    description:
+      - Runs the bundled reset_entity_names.py against the live instance.
+      - Since core 2026.6 an automatic entity ID carries its area as a prefix,
+        so a device whose name repeats its area yields a doubled ID. Remove the
+        area from the device name first, then reset.
+    options:
+      homeassistant_reset_dry_run:
+        description: Report the renames without applying them.
+        type: bool
+        default: false
+      homeassistant_reset_search_regex:
+        description: Limit the reset to entity IDs matching this regex.
+        type: str
+        default: ""
+      homeassistant_tools_verbose:
+        description: Pass --verbose to the tool.
+        type: bool
+        default: false
+
+  check_health:
+    short_description: Run every bundled consistency check against the instance
+    description:
+      - Reports broken entity references in automations, scripts, groups,
+        helpers and dashboards, and devices nothing is behind.
+      - Read-only. The tools' interactive --fix mode is not exposed, because it
+        prompts on stdin and would hang under a non-TTY task.
+    options:
+      homeassistant_health_fail_on_findings:
+        description: Fail the play when the checks report findings.
+        type: bool
+        default: true
+      homeassistant_tools_verbose:
+        description: Pass --verbose to the tools.
+        type: bool
+        default: false

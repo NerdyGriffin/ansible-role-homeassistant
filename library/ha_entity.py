@@ -63,26 +63,26 @@ author:
 EXAMPLES = r'''
 - name: List all sensor entities
   ha_entity:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: list
     search: "^sensor\\."
 
 - name: Get an entity's registry entry
   ha_entity:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: get
     entity_id: sensor.garage_motion_sensor_rssi
 
 - name: Rename an entity
   ha_entity:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: update
     entity_id: sensor.old_name
     new_entity_id: sensor.new_name
 
 - name: Reset an entity's friendly name to default
   ha_entity:
-    homeassistant: "{{ homeassistant }}"
+    homeassistant: "{{ homeassistant_connection }}"
     action: reset_name
     entity_id: sensor.garage_motion_sensor_rssi
 '''
@@ -99,7 +99,6 @@ entity:
   type: dict
 '''
 
-import re
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.ha_client import HomeAssistantClient, check_dependencies

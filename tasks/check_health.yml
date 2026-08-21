@@ -1,0 +1,53 @@
+---
+# Run every bundled consistency check against the live instance: broken entity
+# references in automations, scripts, groups, helpers and dashboards, plus
+# devices the registry still lists although nothing is behind them.
+#
+#   - ansible.builtin.include_role:
+#       name: nerdygriffin.homeassistant
+#       tasks_from: check_health
+#
+# Read-only. The tools' own --fix mode is deliberately not exposed: it prompts
+# on stdin, which under a non-TTY command task means a hang, not a refusal.
+
+- name: Prepare the entity-renamer tools
+  ansible.builtin.include_tasks: tools_setup.yml
+
+- name: Run the Home Assistant health checks
+  ansible.builtin.command:
+    # check_health.py runs the individual checks as subprocesses under
+    # sys.executable, so naming the venv interpreter here is what carries the
+    # dependencies down to them.
+    argv:
+      - "{{ homeassistant_tools_python }}"
+      - "{{ homeassistant_tools_dir }}/check_health.py"
+    chdir: "{{ homeassistant_tools_dir }}"
+  environment:
+    PYTHONPATH: "{{ homeassistant_tools_state_dir }}:{{ homeassistant_tools_dir }}"
+  # rc 1 means the checks found something, which is a report rather than an
+  # execution failure. Anything else is the tool itself breaking.
+  changed_when: false
+  failed_when: homeassistant_health_result.rc not in [0, 1]
+  register: homeassistant_health_result
+  check_mode: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Show the health check report
+  ansible.builtin.debug:
+    var: homeassistant_health_result.stdout_lines
+  delegate_to: localhost
+  run_once: true
+
+- name: Assert the instance is consistent
+  ansible.builtin.assert:
+    that:
+      - homeassistant_health_result.rc == 0
+    fail_msg: >-
+      Home Assistant health checks reported problems. See the report above, and
+      re-run the individual tool with --fix from a terminal to repair
+      interactively.
+    quiet: true
+  when: homeassistant_health_fail_on_findings | bool
+  delegate_to: localhost
+  run_once: true

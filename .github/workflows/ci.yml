@@ -34,3 +34,26 @@ jobs:
 
       - name: Lint Ansible.
         run: ansible-lint .
+
+  unit:
+    name: Unit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v4
+        with:
+          path: 'nerdygriffin.homeassistant'
+
+      - name: Set up Python 3.
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies.
+        run: pip3 install pytest websocket-client requests
+
+      # tests/unit only exercises module_utils offline. The live tests in
+      # tests/integration need a Home Assistant instance and a token, so they
+      # are run by hand.
+      - name: Run unit tests.
+        run: pytest tests/unit -q

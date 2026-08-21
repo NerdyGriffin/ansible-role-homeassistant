@@ -1,18 +1,46 @@
 ---
-# Home Assistant connection settings
-# These should be overridden in group_vars or host_vars
-homeassistant:
-  host: "{{ ansible_host | default('homeassistant.local') }}"
-  port: 8123
-  tls: false
-  ssl_verify: false
-  # access_token should be set via vault
-  # access_token: ""
+# Connection to the Home Assistant instance.
+#
+# Flat, role-prefixed names per the Galaxy convention. Set them in group_vars,
+# host_vars, or on the play. The nested `homeassistant:` dict this role used to
+# take still works for one more release (see vars/main.yml), but the flat names
+# win wherever both are set.
+homeassistant_host: ""
+homeassistant_port: 8123
+homeassistant_tls: false
+homeassistant_ssl_verify: false
 
-# Python dependencies for HA API modules
+# A long-lived access token, from the Home Assistant UI under
+# Profile > Security > Long-lived access tokens. Keep it in a vault; the role
+# never logs it.
+homeassistant_access_token: ""
+
+# Python packages the controller needs, both for the ha_* modules and for the
+# bundled entity-renamer tools.
 homeassistant_pip_packages:
   - websocket-client
   - requests
 
-# Virtualenv for HA API dependencies (on the controller)
-homeassistant_venv_path: "{{ role_path }}/.venv"
+# Whether the role may install those packages into the interpreter Ansible is
+# running under. Off by default: a role that runs on the controller has no
+# business changing the environment it was invoked with, so the default is to
+# check that they import and name the missing ones if they do not.
+homeassistant_manage_dependencies: false
+
+# Where the role keeps controller-side state for the bundled entity-renamer
+# tools: the virtualenv it builds, and the config.py it renders.
+#
+# Deliberately outside role_path. `ansible-galaxy role install` replaces the
+# role directory wholesale on update, so a venv written inside it does not
+# survive the next install of the role that created it.
+homeassistant_tools_state_dir: "{{ lookup('ansible.builtin.env', 'HOME') }}/.local/state/nerdygriffin.homeassistant"
+
+# Arguments for the bundled tools. See tasks/reset_entity_names.yml and
+# tasks/check_health.yml, which are meant to be reached with tasks_from.
+homeassistant_reset_dry_run: false
+homeassistant_reset_search_regex: ""
+homeassistant_tools_verbose: false
+
+# Whether check_health should fail the play when the checks report findings.
+# Set false to collect the report without stopping a longer play.
+homeassistant_health_fail_on_findings: true

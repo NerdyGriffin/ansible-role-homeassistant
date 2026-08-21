@@ -1,0 +1,34 @@
+---
+# The connection dict the ha_automation and ha_entity modules take.
+#
+# A module argument is not a role variable, so it keeps the nested shape; the
+# role composes it here from the flat homeassistant_* defaults. Pass it as
+# `homeassistant: "{{ homeassistant_connection }}"`.
+#
+# Precedence is decided once, on homeassistant_host, rather than key by key.
+# Per-key precedence cannot work for the booleans: `tls: false` is the default
+# AND a legitimate explicit value, so no expression can tell "unset" from "set
+# to false", and a naive `default(..., true)` would silently discard every
+# explicit false. Whole-dict precedence has no such ambiguity -- either the flat
+# interface is in use or the deprecated nested one is.
+homeassistant_legacy_connection: "{{ homeassistant | default({}, true) }}"
+homeassistant_use_flat_connection: "{{ homeassistant_host | length > 0 }}"
+
+homeassistant_connection:
+  host: "{{ homeassistant_host if homeassistant_use_flat_connection | bool
+            else homeassistant_legacy_connection.host | default('') }}"
+  port: "{{ (homeassistant_port if homeassistant_use_flat_connection | bool
+             else homeassistant_legacy_connection.port | default(8123)) | int }}"
+  tls: "{{ (homeassistant_tls if homeassistant_use_flat_connection | bool
+            else homeassistant_legacy_connection.tls | default(false)) | bool }}"
+  ssl_verify: "{{ (homeassistant_ssl_verify if homeassistant_use_flat_connection | bool
+                   else homeassistant_legacy_connection.ssl_verify | default(false)) | bool }}"
+  access_token: "{{ homeassistant_access_token if homeassistant_use_flat_connection | bool
+                    else homeassistant_legacy_connection.access_token | default('') }}"
+
+# Paths under homeassistant_tools_state_dir, and the vendored tool directory
+# they serve. The tools import `config` from the state dir and each other from
+# the tool dir, so both go on PYTHONPATH.
+homeassistant_tools_venv: "{{ homeassistant_tools_state_dir }}/venv"
+homeassistant_tools_python: "{{ homeassistant_tools_state_dir }}/venv/bin/python"
+homeassistant_tools_dir: "{{ role_path }}/files/entity-renamer"

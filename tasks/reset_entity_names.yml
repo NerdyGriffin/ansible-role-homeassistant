@@ -1,0 +1,46 @@
+---
+# Reset entity IDs to what Home Assistant would generate from the current device
+# and entity names. Reach it with:
+#
+#   - ansible.builtin.include_role:
+#       name: nerdygriffin.homeassistant
+#       tasks_from: reset_entity_names
+#     vars:
+#       homeassistant_reset_dry_run: true
+#
+# Run it dry first. Since core 2026.6 an automatic entity ID carries its area as
+# a prefix, so a device whose name still repeats its area produces a doubled ID
+# such as light.porch_porch_fan. Strip the area from the device name, then reset.
+
+- name: Prepare the entity-renamer tools
+  ansible.builtin.include_tasks: tools_setup.yml
+
+- name: Reset entity names
+  ansible.builtin.command:
+    # The tools venv interpreter is named explicitly rather than left to the
+    # script's `#!/usr/bin/env python3` shebang, which would resolve against
+    # PATH and find whichever python the controller happens to offer.
+    argv: "{{ [homeassistant_tools_python,
+               homeassistant_tools_dir + '/reset_entity_names.py']
+              + (['--dry-run'] if homeassistant_reset_dry_run | bool else [])
+              + (['--search', homeassistant_reset_search_regex]
+                 if homeassistant_reset_search_regex | length > 0 else [])
+              + (['--verbose'] if homeassistant_tools_verbose | bool else []) }}"
+    chdir: "{{ homeassistant_tools_dir }}"
+  environment:
+    # The tools import `config` from the state dir and each other from the tool
+    # dir. Neither is on sys.path by default, because the script is reached by
+    # an absolute path rather than as the working directory's own module.
+    PYTHONPATH: "{{ homeassistant_tools_state_dir }}:{{ homeassistant_tools_dir }}"
+  changed_when: >-
+    not (homeassistant_reset_dry_run | bool)
+    and 'Successfully' in homeassistant_reset_result.stdout
+  register: homeassistant_reset_result
+  delegate_to: localhost
+  run_once: true
+
+- name: Show what the reset did
+  ansible.builtin.debug:
+    var: homeassistant_reset_result.stdout_lines
+  delegate_to: localhost
+  run_once: true

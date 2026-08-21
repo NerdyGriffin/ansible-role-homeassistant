@@ -1,28 +1,64 @@
 ---
-# Main entry point for the homeassistant role.
+# Default entry point: validate the connection settings and the controller's
+# Python environment, so a play that goes on to use ha_automation / ha_entity
+# fails here with a clear message rather than deep inside a module.
 #
-# This role provides ha_automation and ha_entity custom modules that
-# run on the controller and communicate with HA via WebSocket/REST API.
-#
-# Prerequisites (on the Ansible controller):
-#   pip install websocket-client requests
-#
-# Playbooks using this role should target localhost with become: false.
-#
-# After including this role, use the modules directly:
-#
-#   - ha_automation:
-#       homeassistant: "{{ homeassistant }}"
-#       action: list
-#
-#   - ha_entity:
-#       homeassistant: "{{ homeassistant }}"
-#       action: list
-#       search: "^sensor\\."
+# The role's other entry points are reached with tasks_from:
+#   reset_entity_names  -- reset entity IDs to what Home Assistant would generate
+#   check_health        -- run every bundled consistency check
 
-- name: Verify HA API Python dependencies are available
+- name: Assert the Home Assistant connection settings are complete
+  ansible.builtin.assert:
+    that:
+      - homeassistant_connection.host | length > 0
+      - homeassistant_connection.access_token | length > 0
+      - homeassistant_connection.port | int > 0
+    fail_msg: >-
+      Set homeassistant_host and homeassistant_access_token (keep the token in a
+      vault). Create the token in Home Assistant under
+      Profile > Security > Long-lived access tokens.
+    quiet: true
+  delegate_to: localhost
+  run_once: true
+
+- name: Warn that the nested homeassistant dict is deprecated
+  ansible.builtin.debug:
+    msg: >-
+      The nested `homeassistant:` dict is deprecated and will be removed in the
+      next release. Replace it with homeassistant_host, homeassistant_port,
+      homeassistant_tls, homeassistant_ssl_verify and
+      homeassistant_access_token.
+  when: not homeassistant_use_flat_connection | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Install the Python dependencies on the controller
+  ansible.builtin.pip:
+    name: "{{ homeassistant_pip_packages }}"
+    state: present
+  when: homeassistant_manage_dependencies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Check the Python dependencies import on the controller
   ansible.builtin.command:
-    cmd: "{{ ansible_python_interpreter | default('python3') }} -c 'import websocket; import requests'"
+    argv:
+      - "{{ ansible_python_interpreter | default('python3') }}"
+      - "-c"
+      - "import websocket; import requests"
   changed_when: false
+  failed_when: false
+  register: homeassistant_import_check
+  delegate_to: localhost
+  run_once: true
+
+- name: Explain how to satisfy the missing dependencies
+  ansible.builtin.fail:
+    msg: >-
+      The ha_* modules run on the controller and need
+      {{ homeassistant_pip_packages | join(', ') }} importable by
+      {{ ansible_python_interpreter | default('python3') }}. Install them there,
+      or set homeassistant_manage_dependencies=true to let this role do it.
+  when: homeassistant_import_check.rc != 0
   delegate_to: localhost
   run_once: true

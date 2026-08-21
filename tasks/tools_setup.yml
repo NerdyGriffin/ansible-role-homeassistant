@@ -1,0 +1,33 @@
+---
+# Shared preparation for the bundled entity-renamer tools. Included by
+# reset_entity_names.yml and check_health.yml; not an entry point itself.
+#
+# The tools are plain CLI scripts, not Ansible modules, so they need their own
+# interpreter and their own config.py. Both live under
+# homeassistant_tools_state_dir rather than in the role, because
+# `ansible-galaxy role install` replaces the role directory on update.
+
+- name: Create the tools state directory
+  ansible.builtin.file:
+    path: "{{ homeassistant_tools_state_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  run_once: true
+
+- name: Install the tools' Python dependencies into their own virtualenv
+  ansible.builtin.pip:
+    requirements: "{{ homeassistant_tools_dir }}/requirements.txt"
+    virtualenv: "{{ homeassistant_tools_venv }}"
+    virtualenv_command: "{{ ansible_python_interpreter | default('python3') }} -m venv"
+  delegate_to: localhost
+  run_once: true
+
+- name: Render config.py for the tools
+  ansible.builtin.template:
+    src: config.py.j2
+    dest: "{{ homeassistant_tools_state_dir }}/config.py"
+    mode: "0600"
+  no_log: true
+  delegate_to: localhost
+  run_once: true

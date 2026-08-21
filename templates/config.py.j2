@@ -1,0 +1,11 @@
+{# Rendered for the vendored entity-renamer tools, which import `config` at
+   module scope. Mirrors files/entity-renamer/config.py.example -- if the
+   upstream example gains a setting, add it here too, or the tools will fail on
+   an AttributeError rather than a missing-config message.
+
+   HOST carries the port, because that is the shape the tools' own
+   f"http{TLS_S}://{config.HOST}" string building expects. #}
+HOST = "{{ homeassistant_connection.host }}:{{ homeassistant_connection.port }}"
+TLS = {{ homeassistant_connection.tls | bool | ternary('True', 'False') }}
+SSL_VERIFY = {{ homeassistant_connection.ssl_verify | bool | ternary('True', 'False') }}
+ACCESS_TOKEN = "{{ homeassistant_connection.access_token }}"
