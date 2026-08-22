@@ -20,12 +20,13 @@
     # The tools venv interpreter is named explicitly rather than left to the
     # script's `#!/usr/bin/env python3` shebang, which would resolve against
     # PATH and find whichever python the controller happens to offer.
-    argv: "{{ [homeassistant_tools_python,
-               homeassistant_tools_dir + '/reset_entity_names.py']
-              + (['--dry-run'] if homeassistant_reset_dry_run | bool else [])
-              + (['--search', homeassistant_reset_search_regex]
-                 if homeassistant_reset_search_regex | length > 0 else [])
-              + (['--verbose'] if homeassistant_tools_verbose | bool else []) }}"
+    argv: >-
+      {{ [homeassistant_tools_python,
+          homeassistant_tools_dir + '/reset_entity_names.py']
+         + (['--dry-run'] if homeassistant_reset_dry_run | bool else [])
+         + (['--search', homeassistant_reset_search_regex]
+            if homeassistant_reset_search_regex | length > 0 else [])
+         + (['--verbose'] if homeassistant_tools_verbose | bool else []) }}
     chdir: "{{ homeassistant_tools_dir }}"
   environment:
     # The tools import `config` from the state dir and each other from the tool

@@ -54,10 +54,7 @@
         that:
           - listed_entities.entities is defined
           - listed_entities.entities | length > 0
-          - listed_entities.entities
-            | map(attribute='entity_id')
-            | select('match', test_entity_search)
-            | list | length == listed_entities.entities | length
+          - listed_entities.entities | map(attribute='entity_id') | select('match', test_entity_search) | list | length == listed_entities.entities | length
         fail_msg: "ha_entity action=list ignored the search regex"
         quiet: true
 

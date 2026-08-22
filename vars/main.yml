@@ -14,17 +14,24 @@
 homeassistant_legacy_connection: "{{ homeassistant | default({}, true) }}"
 homeassistant_use_flat_connection: "{{ homeassistant_host | length > 0 }}"
 
+# Choosing the source as a whole is what makes the paragraph above literal, and
+# it keeps each line below short enough to survive `ansible-lint --fix`
+# unwrapping it.
+homeassistant_connection_source: >-
+  {{ {'host': homeassistant_host,
+      'port': homeassistant_port,
+      'tls': homeassistant_tls,
+      'ssl_verify': homeassistant_ssl_verify,
+      'access_token': homeassistant_access_token}
+     if homeassistant_use_flat_connection | bool
+     else homeassistant_legacy_connection }}
+
 homeassistant_connection:
-  host: "{{ homeassistant_host if homeassistant_use_flat_connection | bool
-            else homeassistant_legacy_connection.host | default('') }}"
-  port: "{{ (homeassistant_port if homeassistant_use_flat_connection | bool
-             else homeassistant_legacy_connection.port | default(8123)) | int }}"
-  tls: "{{ (homeassistant_tls if homeassistant_use_flat_connection | bool
-            else homeassistant_legacy_connection.tls | default(false)) | bool }}"
-  ssl_verify: "{{ (homeassistant_ssl_verify if homeassistant_use_flat_connection | bool
-                   else homeassistant_legacy_connection.ssl_verify | default(false)) | bool }}"
-  access_token: "{{ homeassistant_access_token if homeassistant_use_flat_connection | bool
-                    else homeassistant_legacy_connection.access_token | default('') }}"
+  host: "{{ homeassistant_connection_source.host | default('') }}"
+  port: "{{ homeassistant_connection_source.port | default(8123) | int }}"
+  tls: "{{ homeassistant_connection_source.tls | default(false) | bool }}"
+  ssl_verify: "{{ homeassistant_connection_source.ssl_verify | default(false) | bool }}"
+  access_token: "{{ homeassistant_connection_source.access_token | default('') }}"
 
 # Paths under homeassistant_tools_state_dir, and the vendored tool directory
 # they serve. The tools import `config` from the state dir and each other from

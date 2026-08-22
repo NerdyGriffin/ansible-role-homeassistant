@@ -1,6 +1,6 @@
 ---
 name: CI
-'on':
+"on":
   pull_request:
   push:
     branches:
@@ -8,7 +8,7 @@ name: CI
 
 defaults:
   run:
-    working-directory: 'nerdygriffin.homeassistant'
+    working-directory: "nerdygriffin.homeassistant"
 
 jobs:
 
@@ -19,12 +19,12 @@ jobs:
       - name: Check out the codebase.
         uses: actions/checkout@v4
         with:
-          path: 'nerdygriffin.homeassistant'
+          path: "nerdygriffin.homeassistant"
 
       - name: Set up Python 3.
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install test dependencies.
         run: pip3 install yamllint ansible-lint
@@ -42,12 +42,12 @@ jobs:
       - name: Check out the codebase.
         uses: actions/checkout@v4
         with:
-          path: 'nerdygriffin.homeassistant'
+          path: "nerdygriffin.homeassistant"
 
       - name: Set up Python 3.
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install test dependencies.
         run: pip3 install pytest websocket-client requests
