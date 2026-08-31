@@ -143,6 +143,42 @@ Update the subtree with:
 git subtree pull --prefix files/entity-renamer entity-renamer main --squash
 ```
 
+## Backup Inspection
+
+`files/backup-inspector/` reads an entity's recorded history out of a Home
+Assistant backup, reaching further back than the live recorder's purge window
+allows. It decrypts the SecureTar layer of a protected backup on the
+controller, then queries the `home-assistant_v2.db` inside it read-only.
+
+```yaml
+- ansible.builtin.include_role:
+    name: nerdygriffin.homeassistant
+    tasks_from: inspect_backup
+  vars:
+    homeassistant_backup_name: automatic_backup_2026-08-21_05.05.tar
+    homeassistant_backup_ssh_host: "<host>"
+    homeassistant_backup_encryption_key: "{{ vault_backup_key }}"
+    homeassistant_backup_entity_pattern: "switch.%adaptive%"
+```
+
+The encryption password reaches the tool on stdin, so it lands in neither argv
+nor a file. Set `homeassistant_backup_local_path` instead of the ssh variables
+when the archive is already on the controller.
+
+Two things govern how far back this can see. Each archive holds only the
+history the recorder had when it was taken, so a gap in the backup schedule is
+a gap in what can be recovered. And a recorder database stores *changes*, so a
+single row across a long window means the value never moved — while a value
+that reappears after an `unavailable` row is a restart, not an edit.
+
+The archive and the extracted database are both large — budget roughly four
+times the archive size in `homeassistant_backup_work_dir`. The archive is
+dropped as soon as the database is out of it, and the scratch directory is
+removed even when a step fails.
+
+Copying uses `scp`, not `ansible.builtin.fetch`: a Home Assistant OS appliance
+has no Python for `fetch` to stat the file with, and `raw` is not binary-safe.
+
 ## Example Playbook
 
 ```yaml

@@ -1,0 +1,126 @@
+---
+# Report an entity's recorded history from a Home Assistant backup.
+#
+#   - ansible.builtin.include_role:
+#       name: nerdygriffin.homeassistant
+#       tasks_from: inspect_backup
+#     vars:
+#       homeassistant_backup_name: <archive.tar>
+#       homeassistant_backup_entity_pattern: switch.%
+#
+# Read-only against Home Assistant: it copies a backup, decrypts it on the
+# controller, and queries the recorder database inside it. Nothing is written
+# back, and the scratch copies are removed even when a step fails.
+#
+# Reaching back further than the live recorder's purge window is the point.
+# Each backup carries whatever history the recorder held when it was taken, so
+# older archives see further back, and a gap in the backup schedule is a gap in
+# what can be recovered.
+
+- name: Assert a backup has been named
+  ansible.builtin.assert:
+    that:
+      - homeassistant_backup_name | length > 0 or homeassistant_backup_local_path | length > 0
+    fail_msg: >-
+      Set homeassistant_backup_name (a file in {{ homeassistant_backup_dir }} on
+      the Home Assistant host) or homeassistant_backup_local_path (an archive
+      already on the controller).
+    quiet: true
+  delegate_to: localhost
+  run_once: true
+
+- name: Assert the archive can be reached
+  ansible.builtin.assert:
+    that:
+      - homeassistant_backup_ssh_host | length > 0
+    fail_msg: >-
+      Set homeassistant_backup_ssh_host so the archive can be copied, or set
+      homeassistant_backup_local_path to skip the copy.
+    quiet: true
+  when: homeassistant_backup_local_path | length == 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Prepare the backup inspector tools
+  ansible.builtin.include_tasks: backup_tools_setup.yml
+
+- name: Inspect the backup
+  delegate_to: localhost
+  run_once: true
+  block:
+    - name: Create the scratch directory
+      ansible.builtin.file:
+        path: "{{ homeassistant_backup_work_dir }}"
+        state: directory
+        mode: "0700"
+
+    # scp rather than ansible.builtin.fetch: a Home Assistant OS appliance has
+    # no Python for fetch to stat the file with, and raw is not binary-safe.
+    - name: Copy the backup archive to the controller
+      ansible.builtin.command:
+        argv:
+          - scp
+          - -q
+          - "{{ homeassistant_backup_ssh_user }}@{{ homeassistant_backup_ssh_host }}:{{ homeassistant_backup_dir }}/{{ homeassistant_backup_name }}"
+          - "{{ homeassistant_backup_work_dir }}/backup.tar"
+      when: homeassistant_backup_local_path | length == 0
+      changed_when: true
+      check_mode: false
+
+    - name: Decrypt the archive and extract the recorder database
+      ansible.builtin.command:
+        argv:
+          - "{{ homeassistant_backup_tools_python }}"
+          - "{{ homeassistant_backup_tools_dir }}/extract.py"
+          - --backup
+          - "{{ homeassistant_backup_local_path | default(homeassistant_backup_work_dir ~ '/backup.tar', true) }}"
+          - --outdir
+          - "{{ homeassistant_backup_work_dir }}"
+          - --want
+          - home-assistant_v2.db
+        # The password crosses on stdin so it reaches neither argv nor disk.
+        stdin: "{{ homeassistant_backup_encryption_key }}"
+      register: homeassistant_backup_extract
+      changed_when: homeassistant_backup_extract.rc == 0
+      failed_when: false
+      check_mode: false
+      no_log: true
+
+    # extract.py prints only its own messages, and a Python traceback carries no
+    # local variable values, so this is safe to show without no_log.
+    - name: Report an extraction failure
+      ansible.builtin.fail:
+        msg: >-
+          extract.py exited {{ homeassistant_backup_extract.rc }}:
+          {{ homeassistant_backup_extract.stderr_lines | default([]) | join(' ') }}
+      when: homeassistant_backup_extract.rc != 0
+
+    - name: Drop the archive now the database is out of it
+      ansible.builtin.file:
+        path: "{{ homeassistant_backup_work_dir }}/backup.tar"
+        state: absent
+
+    - name: Query the recorder database
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [homeassistant_backup_tools_python,
+             homeassistant_backup_tools_dir ~ '/query_history.py',
+             '--db', homeassistant_backup_work_dir ~ '/home-assistant_v2.db',
+             '--entity-pattern', homeassistant_backup_entity_pattern,
+             '--max-rows', homeassistant_backup_max_rows | string]
+            + (['--transitions-only'] if homeassistant_backup_transitions_only | bool else [])
+          }}
+      register: homeassistant_backup_history
+      changed_when: false
+      check_mode: false
+
+    - name: Show the recovered history
+      ansible.builtin.debug:
+        var: homeassistant_backup_history.stdout_lines
+
+  always:
+    - name: Remove the scratch directory
+      ansible.builtin.file:
+        path: "{{ homeassistant_backup_work_dir }}"
+        state: absent

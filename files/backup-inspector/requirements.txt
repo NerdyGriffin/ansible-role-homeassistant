@@ -1,0 +1,2 @@
+# Decrypts the SecureTar layer Home Assistant wraps a protected backup in.
+securetar>=2024.2.1

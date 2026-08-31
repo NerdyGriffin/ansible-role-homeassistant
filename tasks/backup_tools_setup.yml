@@ -1,0 +1,23 @@
+---
+# Build the virtualenv the backup inspector runs in. Included by
+# inspect_backup.yml; not an entry point itself.
+#
+# Deliberately separate from the entity-renamer's venv: the inspector's only
+# dependency is securetar, which the renamer does not want, and the renamer's
+# requirements.txt lives inside a vendored subtree this role does not edit.
+
+- name: Create the tools state directory
+  ansible.builtin.file:
+    path: "{{ homeassistant_tools_state_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  run_once: true
+
+- name: Install the backup inspector's Python dependencies into its own virtualenv
+  ansible.builtin.pip:
+    requirements: "{{ homeassistant_backup_tools_dir }}/requirements.txt"
+    virtualenv: "{{ homeassistant_backup_tools_venv }}"
+    virtualenv_command: "{{ ansible_python_interpreter | default('python3') }} -m venv"
+  delegate_to: localhost
+  run_once: true

@@ -39,3 +39,10 @@ homeassistant_connection:
 homeassistant_tools_venv: "{{ homeassistant_tools_state_dir }}/venv"
 homeassistant_tools_python: "{{ homeassistant_tools_state_dir }}/venv/bin/python"
 homeassistant_tools_dir: "{{ role_path }}/files/entity-renamer"
+
+# The backup inspector keeps its own virtualenv. Its single dependency
+# (securetar) is of no use to the entity-renamer, and the renamer's
+# requirements.txt sits inside a vendored subtree this role does not edit.
+homeassistant_backup_tools_dir: "{{ role_path }}/files/backup-inspector"
+homeassistant_backup_tools_venv: "{{ homeassistant_tools_state_dir }}/backup-venv"
+homeassistant_backup_tools_python: "{{ homeassistant_tools_state_dir }}/backup-venv/bin/python"

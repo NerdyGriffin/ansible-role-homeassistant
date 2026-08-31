@@ -44,3 +44,34 @@ homeassistant_tools_verbose: false
 # Whether check_health should fail the play when the checks report findings.
 # Set false to collect the report without stopping a longer play.
 homeassistant_health_fail_on_findings: true
+
+# Arguments for the backup inspector. See tasks/inspect_backup.yml, which is
+# meant to be reached with tasks_from.
+#
+# Which archive to read, named as it appears in homeassistant_backup_dir.
+homeassistant_backup_name: ""
+
+# Encryption password for a protected backup, empty for an unprotected one.
+# Keep it in a vault; the role passes it on stdin and never logs it.
+homeassistant_backup_encryption_key: ""
+
+# Where backups live on the Home Assistant host.
+homeassistant_backup_dir: /backup
+
+# How the archive is reached. Set homeassistant_backup_local_path when it is
+# already on the controller; otherwise it is copied with scp from
+# <user>@<host>:<dir>/<name>. scp rather than fetch because a Home Assistant OS
+# appliance has no Python for fetch to run against.
+homeassistant_backup_local_path: ""
+homeassistant_backup_ssh_host: ""
+homeassistant_backup_ssh_user: root
+
+# Which entities to report, as a SQL LIKE pattern matched against entity_id,
+# and how much of each one to print.
+homeassistant_backup_entity_pattern: "%"
+homeassistant_backup_transitions_only: true
+homeassistant_backup_max_rows: 40
+
+# Scratch space on the controller. Both the archive and the extracted database
+# are large, and both are removed when the run finishes.
+homeassistant_backup_work_dir: /tmp/nerdygriffin-homeassistant-backup
